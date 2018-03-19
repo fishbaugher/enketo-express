@@ -114,17 +114,20 @@ function swapTheme( formParts ) {
         if ( theme && settings.themesSupported.some( function( supportedTheme ) {
                 return theme === supportedTheme;
             } ) ) {
-            var $currentStyleSheet = $( 'link[rel=stylesheet][media=all][href*=theme-]' );
-            var $currentPrintStyleSheet = $( 'link[rel=stylesheet][media=print][href*=theme-]' );
-            var $newStyleSheet = $( '<link rel="stylesheet" media="all" href="' + settings.basePath + '/css/theme-' + theme + '.css"/>' );
-            var $newPrintStyleSheet = '<link rel="stylesheet" media="print" href="' + settings.basePath + '/css/theme-' + theme + '.print.css"/>';
+            var $replacementSheets = [];
+            var $styleSheets = $( 'link[rel=stylesheet][href*=theme-]' ).each( function() {
+                $replacementSheets.push( $( this.outerHTML.replace( /(href=.*\/theme-)[A-z]+((\.print)?\.css)/, '$1' + theme + '$2' ) ) );
+            } );
 
-            $newStyleSheet.on( 'load', function() {
+            $replacementSheets[ 0 ].on( 'load', function() {
                 formTheme = theme;
                 resolve( formParts );
             } );
-            $currentStyleSheet.replaceWith( $newStyleSheet );
-            $currentPrintStyleSheet.replaceWith( $newPrintStyleSheet );
+
+            $styleSheets.each( function( index ) {
+                $( this ).replaceWith( $replacementSheets[ index ] );
+            } );
+
         } else {
             console.log( 'Theme "' + theme + '" is not supported. Keeping default theme.' );
             delete formParts.theme;
