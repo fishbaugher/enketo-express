@@ -99,8 +99,8 @@ router
     .get( '/survey/view/iframe', getExistingSurvey )
     .post( '/survey/view', getNewOrExistingSurvey )
     .post( '/survey/view/iframe', getNewOrExistingSurvey )
-    .get( '/survey/view/pdf', getPdf )
-    .post( '/survey/view/pdf', getPdf )
+    .get( '/survey/view/pdf', getExistingSurvey )
+    .post( '/survey/view/pdf', getNewOrExistingSurvey )
     .get( '/survey/all', getExistingSurvey )
     .post( '/survey/all', getNewOrExistingSurvey )
     .get( '/surveys/number', getNumber )
@@ -111,6 +111,7 @@ router
     .post( '/instance/iframe', cacheInstance )
     .post( '/instance/view', cacheInstance )
     .post( '/instance/view/iframe', cacheInstance )
+    .post( '/instance/view/pdf', cacheInstance )
     .delete( '/instance', removeInstance )
     .all( '*', ( req, res, next ) => {
         const error = new Error( 'Not allowed.' );
@@ -157,7 +158,12 @@ function getExistingSurvey( req, res, next ) {
         } )
         .then( id => {
             if ( id ) {
-                _render( 200, _generateWebformUrls( id, req ), res );
+                const status = 200;
+                if ( req.webformType === 'pdf' ) {
+                    _renderPdf( status, id, req, res );
+                } else {
+                    _render( status, _generateWebformUrls( id, req ), res );
+                }
             } else {
                 _render( 404, 'Survey not found.', res );
             }
@@ -187,53 +193,14 @@ function getNewOrExistingSurvey( req, res, next ) {
             return surveyModel.set( survey )
                 .then( id => {
                     if ( id ) {
-                        _render( status, _generateWebformUrls( id, req ), res );
+                        if ( req.webformType === 'pdf' ) {
+                            _renderPdf( status, id, req, res );
+                        } else {
+                            _render( status, _generateWebformUrls( id, req ), res );
+                        }
                     } else {
                         _render( 404, 'Survey not found.', res );
                     }
-                } );
-        } )
-        .catch( next );
-}
-
-function getPdf( req, res, next ) {
-    const survey = {
-        openRosaServer: req.body.server_url || req.query.server_url,
-        openRosaId: req.body.form_id || req.query.form_id,
-        theme: req.body.theme || req.query.theme
-    };
-
-    if ( req.account.quota < req.account.quotaUsed ) {
-        return _render( 403, quotaErrorMessage, res );
-    }
-
-    return surveyModel
-        .getId( survey ) // will return id only for existing && active surveys
-        .then( id => {
-            if ( !id && req.account.quota <= req.account.quotaUsed ) {
-                return _render( 403, quotaErrorMessage, res );
-            }
-            const status = ( id ) ? 200 : 201;
-            // even if id was found still call .set() method to update any properties
-            return surveyModel.set( survey )
-                .then( id => {
-                    if ( id ) {
-                        const url = _generateWebformUrls( id, req ).url;
-                        return pdf.get( url )
-                            .then( function( pdfBuffer ) {
-                                res
-                                    .set( 'Content-Type', 'application/pdf' )
-                                    .set( 'Content-disposition', 'attachment;filename=' + id + '.pdf' )
-                                    .status( status )
-                                    .end( pdfBuffer, 'binary' );
-                            } );
-                        //res.status( status ).download( pdf.get( _generateWebformUrls( id, req ).view_url ), 'form.pdf' );
-                    } else {
-                        _render( 404, 'Survey not found.', res );
-                    }
-                } )
-                .catch( e => {
-                    _render( '500', `PDF generation failed: ${e.message}`, res );
                 } );
         } )
         .catch( next );
@@ -342,7 +309,12 @@ function cacheInstance( req, res, next ) {
             return instanceModel.set( survey );
         } )
         .then( () => {
-            _render( 201, _generateWebformUrls( enketoId, req ), res );
+            const status = 201;
+            if ( req.webformType === 'pdf' ) {
+                _renderPdf( status, enketoId, req, res );
+            } else {
+                _render( status, _generateWebformUrls( enketoId, req ), res );
+            }
         } )
         .catch( next );
 }
@@ -471,6 +443,11 @@ function _generateWebformUrls( id, req ) {
             queryString = _generateQueryString( queryParts );
             obj[ `view${iframePart ? '_iframe' : ''}_url` ] = `${baseUrl}view/${iframePart}${idPartView}${queryString}${hash}`;
             break;
+        case 'pdf':
+            queryParts = req.body.instance_id ? [ `instance_id=${req.body.instance_id}` ] : [];
+            queryString = _generateQueryString( queryParts );
+            obj.pdf_url = `${baseUrl}${req.body.instance_id ? 'edit/' : ''}${idPartOnline}${queryString}`;
+            break;
         case 'all':
             // non-iframe views
             queryString = _generateQueryString( [ req.defaultsQueryParam ] );
@@ -518,4 +495,21 @@ function _render( status, body = {}, res ) {
         body.code = status;
         res.status( status ).json( body );
     }
+}
+
+function _renderPdf( status, id, req, res ) {
+    const url = _generateWebformUrls( id, req ).pdf_url;
+    return pdf.get( url )
+        .then( function( pdfBuffer ) {
+            const filename = `${req.body.form_id || req.query.form_id}${req.body.instance_id ? '-'+req.body.instance_id : ''}.pdf`;
+            // TODO: We've already set to json content-type in authCheck. This may be bad.
+            res
+                .set( 'Content-Type', 'application/pdf' )
+                .set( 'Content-disposition', `attachment;filename=${filename}` )
+                .status( status )
+                .end( pdfBuffer, 'binary' );
+        } )
+        .catch( e => {
+            _render( '500', `PDF generation failed: ${e.message}`, res );
+        } );
 }
