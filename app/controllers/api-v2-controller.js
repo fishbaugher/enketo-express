@@ -2,6 +2,7 @@ const surveyModel = require( '../models/survey-model' );
 const instanceModel = require( '../models/instance-model' );
 const cacheModel = require( '../models/cache-model' );
 const account = require( '../models/account-model' );
+const pdf = require( '../lib/pdf' );
 const auth = require( 'basic-auth' );
 const express = require( 'express' );
 const utils = require( '../lib/utils' );
@@ -58,6 +59,10 @@ router
         req.webformType = 'view-instance';
         next();
     } )
+    .all( '*/pdf', ( req, res, next ) => {
+        req.webformType = 'pdf';
+        next();
+    } )
     .all( '/survey/offline*', ( req, res, next ) => {
         if ( req.app.get( 'offline enabled' ) ) {
             req.webformType = 'offline';
@@ -94,6 +99,8 @@ router
     .get( '/survey/view/iframe', getExistingSurvey )
     .post( '/survey/view', getNewOrExistingSurvey )
     .post( '/survey/view/iframe', getNewOrExistingSurvey )
+    .get( '/survey/view/pdf', getPdf )
+    .post( '/survey/view/pdf', getPdf )
     .get( '/survey/all', getExistingSurvey )
     .post( '/survey/all', getNewOrExistingSurvey )
     .get( '/surveys/number', getNumber )
@@ -184,6 +191,49 @@ function getNewOrExistingSurvey( req, res, next ) {
                     } else {
                         _render( 404, 'Survey not found.', res );
                     }
+                } );
+        } )
+        .catch( next );
+}
+
+function getPdf( req, res, next ) {
+    const survey = {
+        openRosaServer: req.body.server_url || req.query.server_url,
+        openRosaId: req.body.form_id || req.query.form_id,
+        theme: req.body.theme || req.query.theme
+    };
+
+    if ( req.account.quota < req.account.quotaUsed ) {
+        return _render( 403, quotaErrorMessage, res );
+    }
+
+    return surveyModel
+        .getId( survey ) // will return id only for existing && active surveys
+        .then( id => {
+            if ( !id && req.account.quota <= req.account.quotaUsed ) {
+                return _render( 403, quotaErrorMessage, res );
+            }
+            const status = ( id ) ? 200 : 201;
+            // even if id was found still call .set() method to update any properties
+            return surveyModel.set( survey )
+                .then( id => {
+                    if ( id ) {
+                        const url = _generateWebformUrls( id, req ).url;
+                        return pdf.get( url )
+                            .then( function( pdfBuffer ) {
+                                res
+                                    .set( 'Content-Type', 'application/pdf' )
+                                    .set( 'Content-disposition', 'attachment;filename=' + id + '.pdf' )
+                                    .status( status )
+                                    .end( pdfBuffer, 'binary' );
+                            } );
+                        //res.status( status ).download( pdf.get( _generateWebformUrls( id, req ).view_url ), 'form.pdf' );
+                    } else {
+                        _render( 404, 'Survey not found.', res );
+                    }
+                } )
+                .catch( e => {
+                    _render( '500', `PDF generation failed: ${e.message}`, res );
                 } );
         } )
         .catch( next );
