@@ -14,13 +14,13 @@ async function get( url, options = {} ) {
     options.landscape = options.landscape || false;
     options.scale = options.scale || 1;
 
-    await page.goto( url, { waitUntil: 'networkidle0' } ).catch( errorHandler );
+    await page.goto( url, { waitUntil: 'networkidle0' } );//.catch( errorHandler );
     console.log( 'went to page' );
     await page.waitForSelector( 'form.or', { visible: true } );
     console.log( 'waited for form.or' );
     //await page.waitForNavigation();
     //console.log( 'waited for navigation' ).catch( errorHandler );
-    const pdf = await page.pdf( {
+    const pdf = page.pdf( {
             landscape: options.landscape,
             format: options.format,
             margin: {
@@ -30,18 +30,15 @@ async function get( url, options = {} ) {
                 bottom: options.margin
             },
             scale: options.scale
-        } )
-        .catch( errorHandler );
-    console.log( 'waited for pdf ' )
-
-    await browser.close().catch( errorHandler );
+        } );
+        //.catch( errorHandler );
+    console.log('pdf started');
+    await pdf;
+    console.log( 'waited for pdf ' );
+    await browser.close();//.catch( errorHandler );
     console.log( 'browser closed' );
     console.timeEnd( 'pdf generation' );
     return pdf;
-}
-
-function errorHandler( error ) {
-    throw error;
 }
 
 module.exports = { get };
