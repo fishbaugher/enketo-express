@@ -27,6 +27,7 @@ router
     .all( '/*/iframe', _setIframe )
     .all( '/survey/all', _setIframe )
     .all( '/surveys/list', _setIframe )
+    .post( '*/pdf', _setPage )
     .all( '/survey/preview*', ( req, res, next ) => {
         req.webformType = 'preview';
         next();
@@ -347,6 +348,42 @@ function _setQuotaUsed( req, res, next ) {
         .catch( next );
 }
 
+function _setPage( req, res, next ) {
+    req.page = {};
+    req.page.format = req.body.format || req.query.format;
+    if ( req.page.format && !/^(Letter|Legal|Tabloid|Ledger|A0|A1|A2|A3|A4|A5|A6)$/.test( req.page.format ) ) {
+        const error = new Error( 'Format parameter is not valid.' );
+        error.status = 400;
+        throw error;
+    }
+    req.page.landscape = req.body.landscape || req.query.landscape;
+    if ( req.page.landscape && !/^(true|false)$/.test( req.page.landscape ) ) {
+        const error = new Error( 'Landscape parameter is not valid.' );
+        error.status = 400;
+        throw error;
+    }
+    // convert to boolean
+    req.page.landscape = req.page.landscape === 'true';
+    req.page.margin = req.body.margin || req.query.margin;
+    if ( req.page.margin && !/^\d+(\.\d+)?(in|cm|mm)$/.test( req.page.margin ) ) {
+        const error = new Error( 'Margin parameter is not valid.' );
+        error.status = 400;
+        throw error;
+    }
+    /*
+    TODO: scale has not been enabled yet, as it is not supported by Enketo Core's Grid print JS processing function.
+    req.page.scale = req.body.scale || req.query.scale;
+    if ( req.page.scale && !/^\d+$/.test( req.page.scale ) ) {
+        const error = new Error( 'Scale parameter is not valid.' );
+        error.status = 400;
+        throw error;
+    }
+    // convert to number
+    req.page.scale = Number( req.page.scale );
+    */
+    next();
+}
+
 function _setDefaultsQueryParam( req, res, next ) {
     let queryParam = '';
     const map = req.body.defaults || req.query.defaults;
@@ -500,7 +537,7 @@ function _render( status, body = {}, res ) {
 
 function _renderPdf( status, id, req, res ) {
     const url = _generateWebformUrls( id, req ).pdf_url;
-    return pdf.get( url )
+    return pdf.get( url, req.page )
         .then( function( pdfBuffer ) {
             const filename = `${req.body.form_id || req.query.form_id}${req.body.instance_id ? '-'+req.body.instance_id : ''}.pdf`;
             // TODO: We've already set to json content-type in authCheck. This may be bad.
