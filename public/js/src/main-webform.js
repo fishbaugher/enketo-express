@@ -200,7 +200,6 @@ function _init( formParts ) {
                     formParts.$form = form.view.$;
                     if ( settings.print ) {
                         gui.applyPrintStyle();
-                        window.printReady = true;
                     }
                     resolve( formParts );
                 } );

@@ -400,7 +400,7 @@ function promptPrintSettings( ignore, actions ) {
         msg: t( 'confirm.print.msg' )
     };
     var options = {
-        posButton: t( 'confirm.print.posButton' ), //Prepare',
+        posButton: t( 'confirm.print.posButton' ),
         posAction: actions.posAction,
         negButton: t( 'alert.default.button' ),
         negAction: actions.negAction,
@@ -424,6 +424,10 @@ function applyPrintStyle() {
         var paper = { format: settings.format, landscape: settings.landscape, scale: settings.scale, margin: settings.margin };
         printHelper.fixGrid( paper );
     }
+    // allow some time for repainting
+    setTimeout( function() {
+        window.printReady = true;
+    }, 300 );
 }
 
 function alertCacheUnsupported() {

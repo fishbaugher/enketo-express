@@ -72,9 +72,8 @@ function _init( formParts ) {
         } ).then( function( form ) {
             form.view.$.add( $buttons ).removeClass( 'hide' );
             $( 'head>title' ).text( utils.getTitleFromFormStr( formParts.form ) );
-            if (settings.print){
+            if ( settings.print ) {
                 gui.applyPrintStyle();
-                window.printReady = true;
             }
         } );
     } );
