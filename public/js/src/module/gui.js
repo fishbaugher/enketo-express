@@ -7,7 +7,7 @@
 var support = require( 'enketo-core/src/js/support' );
 var settings = require( './settings' );
 var Promise = require( 'lie' );
-var printForm = require( 'enketo-core/src/js/print' );
+var printHelper = require( 'enketo-core/src/js/print' );
 var translator = require( './translator' );
 var t = translator.t;
 var sniffer = require( './sniffer' );
@@ -67,7 +67,7 @@ function setEventHandlers() {
     } );
 
     $( '.form-header__button--print' ).on( 'click', function() {
-        printForm( promptPrintSettings, formTheme );
+        printHelper.printForm( promptPrintSettings, formTheme );
     } );
 
     $( '.side-slider__toggle, .offline-enabled__queue-length' ).on( 'click', function() {
@@ -408,7 +408,7 @@ function promptPrintSettings( ignore, actions ) {
     };
     var inputs = '<fieldset><legend>' + t( 'confirm.print.psize' ) + '</legend>' +
         '<label><input name="format" type="radio" value="A4" required checked/><span>' + t( 'confirm.print.a4' ) + '</span></label>' +
-        '<label><input name="format" type="radio" value="letter" required/><span>' + t( 'confirm.print.letter' ) + '</span></label>' +
+        '<label><input name="format" type="radio" value="Letter" required/><span>' + t( 'confirm.print.letter' ) + '</span></label>' +
         '</fieldset>' +
         '<fieldset><legend>' + t( 'confirm.print.orientation' ) + '</legend>' +
         '<label><input name="orientation" type="radio" value="portrait" required checked/><span>' + t( 'confirm.print.portrait' ) + '</span></label>' +
@@ -417,6 +417,13 @@ function promptPrintSettings( ignore, actions ) {
         '<p class="alert-box info" >' + t( 'confirm.print.reminder' ) + '</p>';
 
     prompt( texts, options, inputs );
+}
+
+function applyPrintStyle() {
+    if ( formTheme === 'grid' || ( !formTheme && printHelper.isGrid() ) ) {
+        var paper = { format: settings.format, landscape: settings.landscape, scale: settings.scale, margin: settings.margin };
+        printHelper.fixGrid( paper );
+    }
 }
 
 function alertCacheUnsupported() {
@@ -504,5 +511,6 @@ module.exports = {
     confirmLogin: confirmLogin,
     alertLoadErrors: alertLoadErrors,
     alertCacheUnsupported: alertCacheUnsupported,
-    getErrorResponseMsg: getErrorResponseMsg
+    getErrorResponseMsg: getErrorResponseMsg,
+    applyPrintStyle: applyPrintStyle
 };

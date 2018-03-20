@@ -445,6 +445,7 @@ function _generateWebformUrls( id, req ) {
             break;
         case 'pdf':
             queryParts = req.body.instance_id ? [ `instance_id=${req.body.instance_id}` ] : [];
+            queryParts.push( 'print=true' );
             queryString = _generateQueryString( queryParts );
             obj.pdf_url = `${baseUrl}${req.body.instance_id ? 'edit/' : ''}${idPartOnline}${queryString}`;
             break;
