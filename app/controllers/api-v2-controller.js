@@ -27,7 +27,7 @@ router
     .all( '/*/iframe', _setIframe )
     .all( '/survey/all', _setIframe )
     .all( '/surveys/list', _setIframe )
-    .post( '*/pdf', _setPage )
+    .all( '*/pdf', _setPage )
     .all( '/survey/preview*', ( req, res, next ) => {
         req.webformType = 'preview';
         next();
