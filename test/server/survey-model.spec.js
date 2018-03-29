@@ -70,28 +70,29 @@ describe( 'Survey Model', () => {
             return expect( model.set( survey ) ).to.eventually.be.rejected;
         } );
 
-        it( 'returns an enketo id if succesful', () => // the algorithm for the very first survey to be created returns YYYp
-            expect( model.set( survey ) ).to.eventually.equal( 'YYYp' ) );
+        it( 'returns an enketo id if succesful', () =>
+            expect( model.set( survey ) ).to.eventually.match( /^[A-z0-9]{8,10}$/ ) );
 
         it( 'returns a different enketo id if the capitalization of the OpenRosa Form ID changes', () => {
             const surveyDifferent = {
                 openRosaId: 'Survey',
                 openRosaServer: survey.openRosaServer
             };
-            // the algorithm for the second survey to be created returns YYY8
             return Promise.all( [
-                expect( model.set( survey ) ).to.eventually.equal( 'YYYp' ),
-                expect( model.set( surveyDifferent ) ).to.eventually.equal( 'YYY8' ),
-            ] );
+                model.set( survey ),
+                model.set( surveyDifferent )
+            ] ).then( results => {
+                return expect( results[ 0 ] ).not.to.equal( results[ 1 ] );
+            } );
         } );
 
         it( 'returns an enketo id when the survey includes a theme property', () => {
             survey.theme = 'gorgeous';
-            return expect( model.set( survey ) ).to.eventually.equal( 'YYYp' );
+            return expect( model.set( survey ) ).to.eventually.match( /^[A-z0-9]{8,10}$/ );
         } );
 
         it( 'drops nearly simultaneous set requests to avoid db corruption', () => Promise.all( [
-            expect( model.set( survey ) ).to.eventually.equal( 'YYYp' ),
+            expect( model.set( survey ) ).to.eventually.match( /^[A-z0-9]{8,10}$/ ),
             expect( model.set( survey ) ).to.eventually.be.rejected,
             expect( model.set( survey ) ).to.eventually.be.rejected
         ] ) );
@@ -254,8 +255,8 @@ describe( 'Survey Model', () => {
             const promise1 = model.set( survey ),
                 promise2 = promise1.then( () => model.getId( survey ) );
             return Promise.all( [
-                expect( promise1 ).to.eventually.equal( 'YYYp' ),
-                expect( promise2 ).to.eventually.equal( 'YYYp' )
+                expect( promise1 ).to.eventually.match( /^[A-z0-9]{8,10}$/ ),
+                expect( promise2 ).to.eventually.match( /^[A-z0-9]{8,10}$/ )
             ] );
         } );
 
@@ -266,7 +267,7 @@ describe( 'Survey Model', () => {
                 return model.getId( survey );
             } );
             return Promise.all( [
-                expect( promise1 ).to.eventually.equal( 'YYYp' ),
+                expect( promise1 ).to.eventually.match( /^[A-z0-9]{8,10}$/ ),
                 expect( promise2 ).to.eventually.be.fulfilled.and.deep.equal( null )
             ] );
         } );
