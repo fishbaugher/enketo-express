@@ -141,27 +141,29 @@ function _addSurvey( openRosaKey, survey ) {
     // survey:counter no longer serves any purpose, after https://github.com/kobotoolbox/enketo-express/issues/481
     return _createNewEnketoId()
         .then( id => {
-            client.multi()
-                .hmset( `id:${id}`, {
-                    // explicitly set the properties that need to be saved
-                    // this will avoid accidentally saving e.g. transformation results and cookies
-                    openRosaServer: survey.openRosaServer,
-                    openRosaId: survey.openRosaId,
-                    submissions: 0,
-                    launchDate: new Date().toISOString(),
-                    active: true,
-                    // avoid storing string 'undefined'
-                    theme: survey.theme || ''
-                } )
-                .set( openRosaKey, id )
-                .exec( error => {
-                    delete pending[ openRosaKey ];
-                    if ( error ) {
-                        throw error;
-                    } else {
-                        return id;
-                    }
-                } );
+            return new Promise( function( resolve, reject ) {
+                client.multi()
+                    .hmset( `id:${id}`, {
+                        // explicitly set the properties that need to be saved
+                        // this will avoid accidentally saving e.g. transformation results and cookies
+                        openRosaServer: survey.openRosaServer,
+                        openRosaId: survey.openRosaId,
+                        submissions: 0,
+                        launchDate: new Date().toISOString(),
+                        active: true,
+                        // avoid storing string 'undefined'
+                        theme: survey.theme || ''
+                    } )
+                    .set( openRosaKey, id )
+                    .exec( error => {
+                        delete pending[ openRosaKey ];
+                        if ( error ) {
+                            reject( error );
+                        } else {
+                            resolve( id );
+                        }
+                    } );
+            } );
         } );
 }
 

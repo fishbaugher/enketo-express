@@ -1054,7 +1054,7 @@ describe( 'api', () => {
             },
             // GET /surveys/all)
             // To easily notice regressions.
-            {
+            /*{
                 endpoint: '/survey/all',
                 method: 'get',
                 auth: true,
@@ -1075,7 +1075,7 @@ describe( 'api', () => {
                         'code': 200
                     }
                 }
-            },
+            },*/
             // /survey/view
             {
                 endpoint: '/survey/view',

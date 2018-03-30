@@ -152,7 +152,7 @@ describe( 'Survey Model', () => {
                 return model.update( survey );
             } ).then( model.get );
             return Promise.all( [
-                expect( promise1 ).to.eventually.have.length( 4 ),
+                expect( promise1 ).to.eventually.have.length( 8 ),
                 expect( promise2 ).to.eventually.be.rejected
             ] );
         } );
@@ -365,22 +365,21 @@ describe( 'Survey Model', () => {
                 .then( () => model.set( survey3 ) )
                 .then( _wait1ms )
                 .then( () => model.set( survey4 ) )
-                .then( () => model.getList( server ) );
+                .then( () => model.getList( server ) )
+                .then( list => list.map( item => ( { openRosaServer: item.openRosaServer, openRosaId: item.openRosaId } ) ) );
+
+
             return expect( getList ).to.eventually.deep.equal( [ {
                 openRosaServer: server,
-                enketoId: 'YYYp',
                 openRosaId: 'a'
             }, {
                 openRosaServer: server,
-                enketoId: 'YYY8',
                 openRosaId: 'b'
             }, {
                 openRosaServer: `${server}/deep`,
-                enketoId: 'YYYo',
                 openRosaId: 'c'
             } ] );
         } );
-
 
         it( 'obtains the list of active surveys only', () => {
             const getList = model.set( survey1 )
@@ -395,33 +394,31 @@ describe( 'Survey Model', () => {
                     openRosaId: survey1.openRosaId,
                     active: false
                 } ) )
-                .then( () => model.getList( server ) );
-            return expect( getList ).to.eventually.deep.equal( [ {
-                openRosaServer: server,
-                enketoId: 'YYY8',
-                openRosaId: 'b'
-            }, {
-                openRosaServer: `${server}/deep`,
-                enketoId: 'YYYo',
-                openRosaId: 'c'
-            } ] );
+                .then( () => model.getList( server ) )
+                .then( list => list.map( item => item.openRosaId ) );
+
+            return expect( getList ).to.eventually.deep.equal( [ 'b', 'c' ] );
         } );
     } );
 
     describe( 'creates enketoIds', () => {
         it( 'without duplicates', () => {
             const ids = [];
-            const duplicateIds = [];
+            const NUM = 1000;
+            let tests = Promise.resolve();
 
-            for ( let i = 0; i < 1000; i++ ) {
-                const id = model.createEnketoId( i );
-                if ( ids.indexOf( id ) !== -1 ) {
-                    duplicateIds.push( id );
-                } else {
-                    ids.push( id );
-                }
+            for ( let i = 0; i < NUM; i++ ) {
+                tests = tests.then( id => {
+                    if ( ids.indexOf( id ) === -1 ) {
+                        ids.push( id );
+                    }
+                    return model.createNewEnketoId();
+                } );
             }
-            expect( duplicateIds ).to.deep.equal( [] );
+
+            const result = tests.then( () => ids );
+
+            return expect( result ).to.eventually.have.lengthOf( NUM );
         } );
 
     } );
