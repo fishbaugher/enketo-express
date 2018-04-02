@@ -4,7 +4,6 @@ process.env.NODE_ENV = 'test';
 
 const Promise = require( 'lie' );
 const chai = require( 'chai' );
-const expect = chai.expect;
 const chaiAsPromised = require( 'chai-as-promised' );
 const redis = require( 'redis' );
 const config = require( '../../app/models/config-model' ).server;
@@ -14,6 +13,8 @@ const client = redis.createClient( config.redis.main.port, config.redis.main.hos
 } );
 
 chai.use( chaiAsPromised );
+
+const expect = chai.expect;
 
 // help function to ensure subsequent database entries don't have the exact same timestamp
 // redis is fast...
@@ -402,6 +403,11 @@ describe( 'Survey Model', () => {
     } );
 
     describe( 'creates enketoIds', () => {
+        const survey1 = {
+            openRosaId: 'a',
+            openRosaServer: 'https://kobotoolbox.org/enketo'
+        };
+
         it( 'without duplicates', () => {
             const ids = [];
             const NUM = 1000;
@@ -419,6 +425,42 @@ describe( 'Survey Model', () => {
             const result = tests.then( () => ids );
 
             return expect( result ).to.eventually.have.lengthOf( NUM );
+        } );
+
+        // Collission without auto-regeneration of ID.
+        it( 'throws when, an already-used ID is forced', () => {
+            const test = () => {
+                return model.set( survey1 )
+                    .then( id => {
+                        return model.createNewEnketoId( id, 0 );
+                    } );
+            };
+            return expect( test() ).to.be.rejectedWith( /Failed to create/ );
+        } );
+
+        // This tests the loop in createEnketoId when a collission occurs.
+        it( 'when an already-used ID is merely suggested', () => {
+            const test = () => {
+                return model.set( survey1 )
+                    .then( id => {
+                        return model.createNewEnketoId( id );
+                    } );
+            };
+            return expect( test() ).to.eventually.match( /[A-z0-9]{8,10}/ );
+        } );
+
+        // This tests the loop in createEnketoId when a collission occurs.
+        it( 'when an already-used ID is merely suggested', () => {
+            const test = () => {
+                let suggestedId;
+                return model.set( survey1 )
+                    .then( id => {
+                        suggestedId = id;
+                        return model.createNewEnketoId( id );
+                    } )
+                    .then( newId => newId && newId !== suggestedId );
+            };
+            return expect( test() ).to.eventually.equal( true );
         } );
 
     } );

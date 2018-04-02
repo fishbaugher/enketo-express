@@ -299,7 +299,7 @@ function _createNewEnketoId( id = utils.randomString( 8 ), triesRemaining = 10 )
                 reject( error );
             } else if ( obj ) {
                 if ( triesRemaining-- ) {
-                    resolve( _createNewEnketoId( triesRemaining ) );
+                    resolve( _createNewEnketoId( undefined, triesRemaining ) );
                 } else {
                     const error = new Error( 'Failed to create unique Enketo ID.' );
                     error.status = 500;
